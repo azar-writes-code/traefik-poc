@@ -1,0 +1,75 @@
+version: "3.8"
+
+services:
+  reverse-proxy:
+    image: traefik:v3.0.2
+    container_name: "traefik"
+    command:
+      - --api.insecure=true
+      - --providers.docker=true
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.myresolver.acme.tlschallenge=true
+      - --certificatesresolvers.myresolver.acme.email=cimomof752@cnurbano.com
+      - --certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - ./letsencrypt:/letsencrypt
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - traefik-net
+
+  go-gin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "9000:9000"
+    depends_on:
+      - mongodb
+    volumes:
+      - .:/go/src
+    environment:
+      - IS_MONGO_ATLAS=false
+      - MONGO_DB_USER=root
+      - MONGO_DB_PASSWORD=password
+      - MONGO_DB_HOST=mongodb
+      - MONGO_DB_PORT=27017
+      - MONGO_DB_NAME=test
+    
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.go-gin.rule=Host(`test.localhost.com`)"
+      - "traefik.http.routers.go-gin.entrypoints=websecure"
+      - "traefik.http.routers.go-gin.tls.certresolver=myresolver"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.routers.redirs.rule=hostregexp(`{host:.+}`)"
+      - "traefik.http.routers.redirs.entrypoints=web"
+      - "traefik.http.routers.redirs.middlewares=redirect-to-https"
+      
+    networks:
+      - traefik-net
+
+  mongodb:
+    image: mongo:6-jammy
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - dbdata:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: test
+    networks:
+      - traefik-net
+
+volumes:
+  dbdata:
+
+networks:
+  traefik-net:
+    external: true

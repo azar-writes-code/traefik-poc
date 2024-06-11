@@ -1,0 +1,32 @@
+name: traefik-poc
+compageCoreVersion: v1.0.0
+git:
+  repository:
+    name: traefik-poc
+    url: https://github.com/azar-writes-code/traefik-poc
+  platform:
+    name: github
+    url: https://github.com
+    userName: azar-writes-code
+
+compageJSON:
+  edges: []
+  nodes:
+  - id: node-ef
+    name: user-service
+    language: go
+    restConfig:
+      server:
+        noSQLDB: MongoDB
+        port: '1337'
+        resources:
+          - fields:
+              Name:
+                datatype: string
+              Age:
+                datatype: int
+            name: User
+      framework: go-gin-server
+      template: compage
+
+
